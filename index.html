@@ -1,355 +1,890 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#0f172a" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Escala Louvor" />
-  <meta name="description" content="Escala do Ministério de Louvor e Adoração — Igreja Manancial de Vida" />
-  <title>Escala do Ministério de Louvor e Adoração</title>
-  <link rel="manifest" href="manifest.json" />
-<link rel="apple-touch-icon" href="icon-192.png" />
-<link rel="icon" href="icon-192.png" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Nunito:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css" />
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="theme-color" content="#0f1a10"/>
+<title>Escala — Ministério de Adoração IMV</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+:root{
+  --gold:#f0c040;--gold-light:#f7d970;--gold-dim:rgba(240,192,64,0.15);
+  --green:#3a7d44;--green-dim:rgba(58,125,68,0.18);
+  --bg:#0f1a10;--surface:#162018;--surface2:#1d2a1f;
+  --border:rgba(240,192,64,0.2);--text:#e8f0e9;--text-muted:#8fa090;
+  --red:#e05555;--red-dim:rgba(224,85,85,0.15);
+  --radius:14px;--radius-sm:8px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-height:100vh;}
+
+/* SPLASH */
+#splash{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;gap:20px;transition:opacity .6s;}
+#splash.fade{opacity:0;pointer-events:none;}
+.splash-cross{font-size:3.5rem;animation:pulse 2s infinite;}
+.splash-title{font-family:'Cinzel',serif;font-size:1.5rem;color:var(--gold);text-align:center;line-height:1.4;}
+.splash-sub{color:var(--text-muted);font-size:.9rem;}
+.splash-bar-wrap{width:180px;height:3px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden;}
+.splash-bar{height:100%;width:0;background:var(--gold);border-radius:3px;animation:load 1.4s ease forwards;}
+@keyframes load{to{width:100%;}}
+@keyframes pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.1);}}
+
+/* HEADER */
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 16px 0;position:sticky;top:0;z-index:100;}
+.header-top{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
+.header-icon{font-size:2rem;}
+.header-text h1{font-family:'Cinzel',serif;font-size:1.05rem;color:var(--gold);line-height:1.2;}
+.header-text p{font-size:.75rem;color:var(--text-muted);}
+.header-right{margin-left:auto;display:flex;gap:8px;align-items:center;}
+.admin-btn{background:var(--gold-dim);border:1px solid var(--border);color:var(--gold);padding:6px 12px;border-radius:var(--radius-sm);font-size:.75rem;cursor:pointer;font-family:'Nunito',sans-serif;font-weight:600;transition:background .2s;}
+.admin-btn:hover{background:rgba(240,192,64,0.3);}
+.admin-btn.active{background:var(--gold);color:#000;}
+nav{display:flex;gap:2px;}
+.tab{flex:1;background:none;border:none;color:var(--text-muted);padding:10px 4px;font-size:.78rem;font-family:'Nunito',sans-serif;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:3px;}
+.tab svg{width:16px;height:16px;}
+.tab.active{color:var(--gold);border-bottom-color:var(--gold);}
+
+/* VIEWS */
+#app{display:none;}
+#app.show{display:block;}
+.view{display:none;padding:16px;}
+.view.active{display:block;}
+.view-header{margin-bottom:18px;}
+.view-header h2{font-family:'Cinzel',serif;font-size:1.2rem;color:var(--gold);}
+.view-header p{font-size:.8rem;color:var(--text-muted);margin-top:3px;}
+
+/* MONTH NAV */
+.month-nav{display:flex;align-items:center;gap:12px;margin-top:8px;}
+.month-nav-btn{background:var(--gold-dim);border:1px solid var(--border);color:var(--gold);width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:1.1rem;display:flex;align-items:center;justify-content:center;}
+.month-label{font-weight:700;color:var(--text);font-size:.95rem;}
+
+/* CARDS */
+.escala-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px;}
+.escala-card.featured{border-color:var(--gold);box-shadow:0 0 30px rgba(240,192,64,.12);}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;}
+.event-date-badge{background:var(--gold);color:#000;padding:4px 10px;border-radius:6px;font-weight:700;font-size:.85rem;}
+.event-day-name{font-size:.75rem;color:var(--text-muted);margin-top:4px;}
+.event-ensaio{font-size:.75rem;color:var(--gold-light);background:var(--gold-dim);padding:3px 8px;border-radius:6px;margin-top:4px;display:inline-block;}
+.card-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;}
+.edit-btn{background:var(--gold-dim);border:1px solid var(--border);color:var(--gold);padding:5px 10px;border-radius:var(--radius-sm);font-size:.72rem;cursor:pointer;font-family:'Nunito',sans-serif;font-weight:600;}
+.edit-btn:hover{background:rgba(240,192,64,.3);}
+.del-btn{background:var(--red-dim);border:1px solid rgba(224,85,85,.3);color:var(--red);padding:5px 10px;border-radius:var(--radius-sm);font-size:.72rem;cursor:pointer;font-family:'Nunito',sans-serif;font-weight:600;}
+.del-btn:hover{background:rgba(224,85,85,.3);}
+.team-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;}
+.team-slot{background:var(--surface);border:1px solid rgba(255,255,255,.06);border-radius:var(--radius-sm);padding:8px 10px;}
+.slot-label{font-size:.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;}
+.slot-name{font-size:.82rem;font-weight:600;color:var(--text);}
+.slot-name.empty{color:var(--text-muted);font-style:italic;font-weight:400;}
+.backing-slot{background:var(--surface);border:1px solid rgba(255,255,255,.06);border-radius:var(--radius-sm);padding:8px 10px;margin-top:8px;}
+.backing-names{font-size:.82rem;font-weight:600;color:var(--text);}
+
+/* ADD BTN */
+.add-escala-btn{width:100%;background:var(--green-dim);border:2px dashed var(--green);color:var(--green-light);padding:14px;border-radius:var(--radius);font-size:.9rem;font-family:'Nunito',sans-serif;font-weight:700;cursor:pointer;margin-top:4px;transition:background .2s;}
+.add-escala-btn:hover{background:rgba(58,125,68,.3);}
+
+/* PROXIMA HERO */
+.proxima-hero{background:linear-gradient(135deg,var(--surface2) 0%,#162a18 100%);border:1px solid var(--gold);border-radius:var(--radius);padding:18px;margin-bottom:16px;}
+.proxima-hero-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+.proxima-date-big{font-family:'Cinzel',serif;font-size:1.6rem;color:var(--gold);line-height:1;}
+.proxima-dayname{font-size:.8rem;color:var(--text-muted);}
+.proxima-countdown{background:var(--gold-dim);border:1px solid var(--border);border-radius:10px;padding:6px 14px;text-align:center;}
+.proxima-countdown .days{font-family:'Cinzel',serif;font-size:1.4rem;color:var(--gold);}
+.proxima-countdown .days-label{font-size:.65rem;color:var(--text-muted);}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:500;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s;}
+.modal-overlay.open{opacity:1;pointer-events:all;}
+.modal-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius) var(--radius) 0 0;padding:20px;width:100%;max-width:520px;max-height:88vh;overflow-y:auto;transform:translateY(30px);transition:transform .3s;}
+.modal-overlay.open .modal-box{transform:translateY(0);}
+.modal-title{font-family:'Cinzel',serif;font-size:1rem;color:var(--gold);margin-bottom:4px;}
+.modal-sub{font-size:.78rem;color:var(--text-muted);margin-bottom:16px;}
+.modal-close{float:right;background:none;border:none;color:var(--text-muted);font-size:1.3rem;cursor:pointer;}
+.form-group{margin-bottom:12px;}
+.form-label{font-size:.72rem;color:var(--text-muted);margin-bottom:4px;display:block;font-weight:700;text-transform:uppercase;letter-spacing:.04em;}
+.form-input{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:var(--radius-sm);font-family:'Nunito',sans-serif;font-size:.88rem;}
+.form-input:focus{outline:none;border-color:var(--gold);}
+.form-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.form-actions{display:flex;gap:10px;margin-top:16px;}
+.btn-primary{flex:1;background:var(--gold);color:#000;border:none;padding:10px;border-radius:var(--radius-sm);font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;font-size:.9rem;}
+.btn-primary:hover{background:var(--gold-light);}
+.btn-secondary{background:none;border:1px solid var(--border);color:var(--text-muted);padding:10px 16px;border-radius:var(--radius-sm);font-family:'Nunito',sans-serif;cursor:pointer;font-size:.88rem;}
+.admin-error{color:var(--red);font-size:.8rem;margin-top:8px;display:none;}
+.section-divider{font-size:.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin:14px 0 8px;border-bottom:1px solid var(--border);padding-bottom:4px;}
+
+/* CONFIRM */
+.confirm-box{background:var(--surface);border:1px solid var(--red);border-radius:var(--radius);padding:20px;width:90%;max-width:340px;margin:auto;margin-top:25vh;text-align:center;}
+.confirm-box p{margin-bottom:16px;font-size:.9rem;}
+
+/* TOAST */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--green);color:#fff;padding:10px 20px;border-radius:24px;font-size:.85rem;font-weight:600;z-index:999;transition:transform .3s;white-space:nowrap;}
+#toast.show{transform:translateX(-50%) translateY(0);}
+
+/* EMPTY */
+.empty-state{text-align:center;padding:40px 20px;color:var(--text-muted);}
+
+/* DICAS */
+.dicas-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.dica-card{background:var(--surface2);border:1px solid rgba(255,255,255,.07);border-radius:var(--radius);padding:14px;}
+.dica-icon{font-size:1.5rem;margin-bottom:8px;}
+.dica-card h3{font-size:.85rem;font-weight:700;color:var(--gold-light);margin-bottom:6px;}
+.dica-card p{font-size:.75rem;color:var(--text-muted);line-height:1.5;}
+
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+@media(max-width:420px){.dicas-grid{grid-template-columns:1fr;}}
+
+/* NOTAS MUSICAIS FLUTUANTES */
+#notes-canvas{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
+.note{position:absolute;font-size:1.1rem;opacity:0;animation:noteRise linear infinite;}
+@keyframes noteRise{
+  0%{opacity:0;transform:translateY(0) rotate(-10deg) scale(0.7);}
+  15%{opacity:0.18;}
+  80%{opacity:0.12;}
+  100%{opacity:0;transform:translateY(-100vh) rotate(15deg) scale(1.1);}
+}
+
+/* NAVEGAÇÃO MOBILE (Avançar / Retornar) — só em celular/tablet */
+.mobile-nav-bar{display:none;}
+@media(max-width:900px){
+  .mobile-nav-bar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:10px 16px;gap:10px;
+    background:var(--surface);border-top:1px solid var(--border);
+    position:sticky;bottom:0;z-index:90;
+  }
+  .mnav-btn{
+    flex:1;display:flex;align-items:center;justify-content:center;gap:6px;
+    background:var(--gold-dim);border:1px solid var(--border);color:var(--gold);
+    padding:10px 8px;border-radius:var(--radius-sm);
+    font-family:'Nunito',sans-serif;font-weight:700;font-size:.82rem;cursor:pointer;
+    transition:background .18s;
+  }
+  .mnav-btn:hover{background:rgba(240,192,64,.3);}
+  .mnav-btn:disabled{opacity:.3;cursor:default;}
+  .mnav-btn svg{width:16px;height:16px;flex-shrink:0;}
+  .mnav-counter{font-size:.72rem;color:var(--text-muted);white-space:nowrap;text-align:center;min-width:54px;}
+}
+</style>
 </head>
 <body>
 
-<!-- SPLASH SCREEN -->
+<!-- NOTAS MUSICAIS FLUTUANTES -->
+<div id="notes-canvas"></div>
+
 <div id="splash">
-  <div class="splash-bg"></div>
-  <div class="splash-content">
-    <div class="splash-logo-wrap">
-      <img src="logo-igreja.jpg" alt="Igreja Manancial de Vida" class="splash-logo" />
-    </div>
-    <h1 class="splash-title">Escala do Ministério<br>de Louvor e Adoração</h1>
-    <p class="splash-sub">Igreja Manancial de Vida</p>
-    <div class="splash-loader">
-      <div class="splash-bar"></div>
-    </div>
-  </div>
+  <div class="splash-cross">✝️</div>
+  <div class="splash-title">Ministério de Adoração<br>Igreja Manancial de Vida</div>
+  <div class="splash-sub">Escala de Louvor</div>
+  <div class="splash-bar-wrap"><div class="splash-bar"></div></div>
 </div>
 
-<!-- APP SHELL -->
-<div id="app" class="hidden">
-
-  <!-- HEADER -->
-  <header id="top-bar">
-    <div class="header-inner">
-      <div class="header-logo-area">
-        <img src="logo-igreja.jpg" alt="Logo" class="header-logo" />
-        <div class="header-text">
-          <span class="header-ministry">Ministério de Louvor e Adoração</span>
-          <span class="header-church">Igreja Manancial de Vida</span>
-        </div>
+<div id="app">
+  <header>
+    <div class="header-top">
+      <div class="header-icon">🎸</div>
+      <div class="header-text">
+        <h1>Ministério de Adoração</h1>
+        <p>Igreja Manancial de Vida</p>
       </div>
-      <button id="admin-btn" class="admin-toggle-btn" title="Acesso Admin">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"/></svg>
-      </button>
+      <div class="header-right">
+        <button class="admin-btn" id="adminBtn">🔐 Admin</button>
+      </div>
     </div>
-
-    <!-- NAV TABS -->
-    <nav class="nav-tabs">
-      <button class="nav-tab active" data-view="proxima">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-        <span>Próxima</span>
+    <nav>
+      <button class="tab active" data-view="proxima">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>Próxima
       </button>
-      <button class="nav-tab" data-view="mes">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        <span>Por Mês</span>
+      <button class="tab" data-view="mes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Mês
       </button>
-      <button class="nav-tab" data-view="historico">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        <span>Histórico</span>
+      <button class="tab" data-view="historico">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Hist.
       </button>
-      <button class="nav-tab" data-view="dicas">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        <span>Dicas</span>
+      <button class="tab" data-view="dicas">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Dicas
       </button>
     </nav>
   </header>
 
-  <!-- MAIN CONTENT -->
-  <main id="main-content">
-
-    <!-- ===== VIEW: PRÓXIMA ===== -->
-    <section id="view-proxima" class="view active">
+  <main>
+    <section class="view active" id="view-proxima">
       <div class="view-header">
         <h2>Próxima Escala</h2>
-        <p class="view-sub">Evento imediato do ministério</p>
+        <p id="proxima-sub">Carregando...</p>
       </div>
-
-      <div id="proxima-card" class="escala-card featured">
-        <div class="card-glow"></div>
-        <div class="card-header-row">
-          <div class="event-badge" id="prox-tipo-badge">Culto</div>
-          <div class="event-datetime">
-            <span id="prox-data" class="event-date">—</span>
-            <span id="prox-hora" class="event-time">—</span>
-          </div>
-        </div>
-        <div class="event-local-row">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          <span id="prox-local">—</span>
-        </div>
-        <div id="prox-obs-row" class="obs-row hidden">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          <span id="prox-obs"></span>
-        </div>
-
-        <div class="team-grid">
-          <div class="team-section">
-            <h4 class="team-section-title">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-              Apoio
-            </h4>
-            <div id="prox-apoio" class="members-list"></div>
-          </div>
-          <div class="instruments-grid">
-            <div class="instrument-slot" data-inst="baixo">
-              <div class="inst-icon">🎸</div>
-              <div class="inst-label">Baixo</div>
-              <div class="inst-member" id="prox-baixo">—</div>
-            </div>
-            <div class="instrument-slot" data-inst="bateria">
-              <div class="inst-icon">🥁</div>
-              <div class="inst-label">Bateria</div>
-              <div class="inst-member" id="prox-bateria">—</div>
-            </div>
-            <div class="instrument-slot" data-inst="guitarra">
-              <div class="inst-icon">🎸</div>
-              <div class="inst-label">Guitarra</div>
-              <div class="inst-member" id="prox-guitarra">—</div>
-            </div>
-            <div class="instrument-slot" data-inst="violao">
-              <div class="inst-icon">🪕</div>
-              <div class="inst-label">Violão</div>
-              <div class="inst-member" id="prox-violao">—</div>
-            </div>
-            <div class="instrument-slot" data-inst="teclado">
-              <div class="inst-icon">🎹</div>
-              <div class="inst-label">Teclado</div>
-              <div class="inst-member" id="prox-teclado">—</div>
-            </div>
-            <div class="instrument-slot" data-inst="ministro">
-              <div class="inst-icon">🎙️</div>
-              <div class="inst-label">Ministro</div>
-              <div class="inst-member" id="prox-ministro">—</div>
-            </div>
-            <div class="instrument-slot" data-inst="datashow">
-              <div class="inst-icon">📽️</div>
-              <div class="inst-label">Data Show</div>
-              <div class="inst-member" id="prox-datashow">—</div>
-            </div>
-            <div class="instrument-slot" data-inst="tecnicosom">
-              <div class="inst-icon">🎚️</div>
-              <div class="inst-label">Técnico de Som</div>
-              <div class="inst-member" id="prox-tecnicosom">—</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ADMIN: FORM NOVA ESCALA -->
-      <div id="admin-new-event" class="admin-panel hidden">
-        <div class="admin-panel-header">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          Editar / Nova Escala
-        </div>
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Data</label>
-            <input type="date" id="form-data" class="form-input" />
-          </div>
-          <div class="form-group">
-            <label>Dia da Semana</label>
-            <select id="form-dia" class="form-input">
-              <option value="">Selecione...</option>
-              <option value="domingo">Domingo</option>
-              <option value="terca">Terça-feira</option>
-              <option value="quinta">Quinta-feira</option>
-              <option value="outro">Outro</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Horário</label>
-            <input type="time" id="form-hora" class="form-input" />
-          </div>
-          <div class="form-group">
-            <label>Local</label>
-            <input type="text" id="form-local" class="form-input" placeholder="Ex: Templo Principal" />
-          </div>
-          <div class="form-group">
-            <label>Tipo de Reunião</label>
-            <select id="form-tipo" class="form-input">
-              <option value="Culto">Culto</option>
-              <option value="EBD">EBD</option>
-              <option value="Células">Células</option>
-              <option value="Reunião de Oração">Reunião de Oração</option>
-              <option value="Evento Especial">Evento Especial</option>
-            </select>
-          </div>
-          <div class="form-group full-width">
-            <label>Observações</label>
-            <textarea id="form-obs" class="form-input" rows="2" placeholder="Informações adicionais..."></textarea>
-          </div>
-          <div class="form-group full-width">
-            <label>Apoio (até 5 nomes, separados por vírgula)</label>
-            <input type="text" id="form-apoio" class="form-input" placeholder="Nome1, Nome2, Nome3..." />
-          </div>
-          <div class="form-group">
-            <label>Baixo</label>
-            <input type="text" id="form-baixo" class="form-input" placeholder="Nome" />
-          </div>
-          <div class="form-group">
-            <label>Bateria</label>
-            <input type="text" id="form-bateria" class="form-input" placeholder="Nome" />
-          </div>
-          <div class="form-group">
-            <label>Guitarra</label>
-            <input type="text" id="form-guitarra" class="form-input" placeholder="Nome" />
-          </div>
-          <div class="form-group">
-            <label>Violão</label>
-            <input type="text" id="form-violao" class="form-input" placeholder="Nome" />
-          </div>
-          <div class="form-group">
-            <label>Teclado</label>
-            <input type="text" id="form-teclado" class="form-input" placeholder="Nome" />
-          </div>
-          <div class="form-group">
-            <label>Ministro</label>
-            <input type="text" id="form-ministro" class="form-input" placeholder="Nome" />
-          </div>
-          <div class="form-group">
-            <label>Data Show</label>
-            <input type="text" id="form-datashow" class="form-input" placeholder="Nome" />
-          </div>
-          <div class="form-group">
-            <label>Técnico de Som</label>
-            <input type="text" id="form-tecnicosom" class="form-input" placeholder="Nome" />
-          </div>
-        </div>
-        <div class="form-actions">
-          <button id="btn-salvar" class="btn-primary">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-            Salvar Escala
-          </button>
-          <button id="btn-limpar" class="btn-secondary">Limpar</button>
-        </div>
-      </div>
+      <div id="proxima-content"></div>
     </section>
 
-    <!-- ===== VIEW: POR MÊS ===== -->
-    <section id="view-mes" class="view">
+    <section class="view" id="view-mes">
       <div class="view-header">
         <h2>Escalas do Mês</h2>
         <div class="month-nav">
-          <button id="mes-prev" class="month-nav-btn">‹</button>
-          <span id="mes-label" class="month-label"></span>
-          <button id="mes-next" class="month-nav-btn">›</button>
+          <button class="month-nav-btn" id="prevMonth">‹</button>
+          <span class="month-label" id="monthLabel"></span>
+          <button class="month-nav-btn" id="nextMonth">›</button>
         </div>
       </div>
-      <div id="mes-list" class="mes-list"></div>
-      <div id="mes-empty" class="empty-state hidden">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        <p>Nenhuma escala neste mês</p>
-      </div>
+      <div id="mes-list"></div>
     </section>
 
-    <!-- ===== VIEW: HISTÓRICO ===== -->
-    <section id="view-historico" class="view">
+    <section class="view" id="view-historico">
       <div class="view-header">
         <h2>Histórico</h2>
-        <p class="view-sub">Escalas anteriores</p>
+        <p>Escalas já realizadas</p>
       </div>
-      <div id="historico-list" class="mes-list"></div>
-      <div id="historico-empty" class="empty-state hidden">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        <p>Nenhum histórico registrado</p>
+      <div id="historico-list"></div>
+      <div class="empty-state" id="hist-empty" style="display:none">
+        <p>Nenhum histórico ainda</p>
       </div>
     </section>
 
-    <!-- ===== VIEW: DICAS ===== -->
-    <section id="view-dicas" class="view">
-      <div class="view-header">
-        <h2>Dicas do Ministério</h2>
-        <p class="view-sub">Crescimento técnico e espiritual</p>
-      </div>
+    <section class="view" id="view-dicas">
+      <div class="view-header"><h2>Dicas do Ministério</h2></div>
       <div class="dicas-grid">
-        <div class="dica-card dica-gold">
-          <div class="dica-icon">🙏</div>
-          <h3>Preparo Espiritual</h3>
-          <p>Antes de qualquer ensaio ou culto, ore individualmente. A adoração começa no coração, não no palco. Reserve tempo com Deus diariamente.</p>
-        </div>
-        <div class="dica-card dica-blue">
-          <div class="dica-icon">🎵</div>
-          <h3>Estudo das Cifras</h3>
-          <p>Chegue ao ensaio já com as músicas estudadas. Grave sua parte em casa, escute a gravação original e anote dúvidas para o ensaio coletivo.</p>
-        </div>
-        <div class="dica-card dica-purple">
-          <div class="dica-icon">👂</div>
-          <h3>Escuta Ativa</h3>
-          <p>No palco, ouça mais do que toca. O ministério funciona como um só instrumento. Sensibilidade ao conjunto é mais valiosa que virtuosismo solo.</p>
-        </div>
-        <div class="dica-card dica-green">
-          <div class="dica-icon">⏰</div>
-          <h3>Pontualidade</h3>
-          <p>Chegue 15 minutos antes do horário marcado. A montagem e o teste de som fazem parte do seu ministério — não é opcional.</p>
-        </div>
-        <div class="dica-card dica-red">
-          <div class="dica-icon">📱</div>
-          <h3>Celular no Culto</h3>
-          <p>Durante o culto, o celular deve estar no modo silencioso. Evite verificar mensagens. Sua presença plena é respeito à congregação e a Deus.</p>
-        </div>
-        <div class="dica-card dica-teal">
-          <div class="dica-icon">🎸</div>
-          <h3>Manutenção dos Instrumentos</h3>
-          <p>Mantenha seu instrumento em bom estado: troque cordas regularmente, afine antes de cada ensaio e informe ao líder qualquer problema técnico com antecedência.</p>
-        </div>
-        <div class="dica-card dica-orange">
-          <div class="dica-icon">🤝</div>
-          <h3>Comunicação</h3>
-          <p>Caso não possa comparecer a uma escala, avise o líder com o máximo de antecedência possível. A equipe precisa se reorganizar com tempo hábil.</p>
-        </div>
-        <div class="dica-card dica-pink">
-          <div class="dica-icon">🌱</div>
-          <h3>Humildade na Adoração</h3>
-          <p>O ministério de louvor serve a Deus e à congregação, não ao ministro. Mantenha o coração humilde, aceite feedbacks e cresça continuamente.</p>
-        </div>
+        <div class="dica-card"><div class="dica-icon">🙏</div><h3>Preparo Espiritual</h3><p>Antes do culto ou ensaio, ore individualmente. A adoração começa no coração.</p></div>
+        <div class="dica-card"><div class="dica-icon">🎵</div><h3>Estude as Cifras</h3><p>Chegue ao ensaio com as músicas já estudadas em casa.</p></div>
+        <div class="dica-card"><div class="dica-icon">👂</div><h3>Escuta Ativa</h3><p>No palco, ouça mais do que toca. O ministério é um único instrumento.</p></div>
+        <div class="dica-card"><div class="dica-icon">⏰</div><h3>Pontualidade</h3><p>Chegue 15 min antes. O teste de som faz parte do ministério.</p></div>
+        <div class="dica-card"><div class="dica-icon">📱</div><h3>Celular no Culto</h3><p>Modo silencioso durante o culto. Presença plena honra a Deus.</p></div>
+        <div class="dica-card"><div class="dica-icon">🤝</div><h3>Comunicação</h3><p>Não pode comparecer? Avise o líder com antecedência.</p></div>
+        <div class="dica-card"><div class="dica-icon">🎸</div><h3>Instrumentos</h3><p>Cordas, afinação e condições técnicas sempre em dia.</p></div>
+        <div class="dica-card"><div class="dica-icon">🌱</div><h3>Humildade</h3><p>O ministério serve a Deus. Aceite feedbacks e cresça sempre.</p></div>
       </div>
     </section>
-
   </main>
 
-</div>
-
-<!-- MODAL: ADMIN LOGIN -->
-<div id="modal-admin" class="modal-overlay hidden">
-  <div class="modal-box">
-    <div class="modal-header">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-      <h3>Acesso Administrativo</h3>
-    </div>
-    <p class="modal-sub">Digite a senha para habilitar edição</p>
-    <div class="modal-input-wrap">
-      <input type="password" id="admin-pass-input" class="form-input" placeholder="Senha" />
-    </div>
-    <div class="modal-actions">
-      <button id="modal-login-btn" class="btn-primary">Entrar</button>
-      <button id="modal-cancel-btn" class="btn-secondary">Cancelar</button>
-    </div>
-    <p id="modal-error" class="modal-error hidden">Senha incorreta. Tente novamente.</p>
+  <!-- BARRA DE NAVEGAÇÃO MOBILE (Avançar / Retornar) -->
+  <div class="mobile-nav-bar" id="mobileNavBar">
+    <button class="mnav-btn" id="mnavPrev" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+      Retornar
+    </button>
+    <span class="mnav-counter" id="mnavCounter"></span>
+    <button class="mnav-btn" id="mnavNext">
+      Avançar
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
   </div>
 </div>
 
-<!-- TOAST -->
-<div id="toast" class="toast hidden"></div>
+<!-- MODAL: ADMIN LOGIN -->
+<div class="modal-overlay" id="modalAdmin">
+  <div class="modal-box" style="max-height:auto;">
+    <button class="modal-close" id="adminClose">✕</button>
+    <div class="modal-title">Acesso Administrativo</div>
+    <div class="modal-sub">Informe a senha para editar escalas</div>
+    <div class="form-group">
+      <label class="form-label">Senha</label>
+      <input type="password" class="form-input" id="adminPass" placeholder="Digite a senha"/>
+    </div>
+    <div class="form-actions">
+      <button class="btn-primary" id="adminLoginBtn">Entrar</button>
+      <button class="btn-secondary" id="adminCancelBtn">Cancelar</button>
+    </div>
+    <div class="admin-error" id="adminError">Senha incorreta.</div>
+  </div>
+</div>
 
-<script type="module" src="app.js"></script>
+<!-- MODAL: EDITAR / NOVA ESCALA -->
+<div class="modal-overlay" id="modalEdit">
+  <div class="modal-box">
+    <button class="modal-close" id="editClose">✕</button>
+    <div class="modal-title" id="editTitle">Editar Escala</div>
+    <div class="modal-sub" id="editSub"></div>
+    <input type="hidden" id="editId"/>
+
+    <div class="section-divider">📅 Data e Informações</div>
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Data</label>
+        <input type="date" class="form-input" id="edit-data"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ensaio (dia e hora)</label>
+        <input type="text" class="form-input" id="edit-ensaio" placeholder="Ex: DIA 7 (DOM) - 10H"/>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Observações</label>
+      <input type="text" class="form-input" id="edit-obs" placeholder="Informações adicionais..."/>
+    </div>
+
+    <div class="section-divider">🎤 Ministério Vocal</div>
+    <div class="form-group">
+      <label class="form-label">Ministro(s)</label>
+      <input type="text" class="form-input" id="edit-ministro" placeholder="Nome(s) — Ex: KELEN / MAYARA"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Backing Vocal (separados por vírgula)</label>
+      <input type="text" class="form-input" id="edit-backing" placeholder="SÁVIO, LUCAS, MARCELA"/>
+    </div>
+
+    <div class="section-divider">🎸 Instrumentos</div>
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Violão</label>
+        <input type="text" class="form-input" id="edit-violao"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Guitarra (Solo)</label>
+        <input type="text" class="form-input" id="edit-guitarra"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Baixo</label>
+        <input type="text" class="form-input" id="edit-baixo"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Bateria</label>
+        <input type="text" class="form-input" id="edit-bateria"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Teclado</label>
+        <input type="text" class="form-input" id="edit-teclado"/>
+      </div>
+    </div>
+
+    <div class="section-divider">📽️ Suporte Técnico</div>
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Data Show</label>
+        <input type="text" class="form-input" id="edit-datashow"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Som</label>
+        <input type="text" class="form-input" id="edit-som"/>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn-primary" id="editSaveBtn">💾 Salvar</button>
+      <button class="btn-secondary" id="editCancelBtn">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: CONFIRMAR EXCLUSÃO -->
+<div class="modal-overlay" id="modalConfirm">
+  <div class="modal-box" style="border-radius:var(--radius);max-height:auto;max-width:340px;margin:auto;">
+    <div class="modal-title" style="color:var(--red);">⚠️ Excluir Escala</div>
+    <p style="margin:12px 0;font-size:.88rem;color:var(--text-muted);" id="confirmMsg">Deseja realmente excluir esta escala? Esta ação não pode ser desfeita.</p>
+    <div class="form-actions">
+      <button class="btn-primary" id="confirmYes" style="background:var(--red);color:#fff;">Excluir</button>
+      <button class="btn-secondary" id="confirmNo">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ============================================================
+// DADOS INICIAIS — JUNHO 2026
+// ============================================================
+const ESCALAS_INICIAIS = [
+  { id:"2026-06-04", data:"2026-06-04", ministro:"KELEN", backing:["SÁVIO","LUCAS","MARCELA"], violao:"PR. TIAGO", guitarra:"ACAUÃ", baixo:"XXXXX", bateria:"GABRIEL", teclado:"BRENDO", datashow:"MÁRCIA", som:"FELIPE", ensaio:"XXXXX", obs:"" },
+  { id:"2026-06-07", data:"2026-06-07", ministro:"DAYANA / SÁVIO", backing:["MÁRCIA","ESTEFANY","MARCELA"], violao:"PR. TIAGO", guitarra:"XXXXX", baixo:"BRENDO", bateria:"LUIS VITOR", teclado:"YAN", datashow:"MESSIAS", som:"MARCELO", ensaio:"DIA 7 (DOM) - 10H", obs:"" },
+  { id:"2026-06-11", data:"2026-06-11", ministro:"MESSIAS", backing:["PATRÍCIA","MARIANA","DAYANA"], violao:"PR. TIAGO", guitarra:"ACAUÃ", baixo:"BRENDO", bateria:"LUIS VITOR", teclado:"YAN", datashow:"REBECA", som:"MARCELO", ensaio:"XXXXX", obs:"" },
+  { id:"2026-06-14", data:"2026-06-14", ministro:"PATRÍCIA / REBECA", backing:["LÉO MAICON","MESSIAS","GRECIVALDO"], violao:"LÉO MAICON", guitarra:"ACAUÃ", baixo:"PR. TIAGO", bateria:"GABRIEL", teclado:"BRENDO", datashow:"ESTEFANY", som:"FELIPE", ensaio:"DIA 14 (DOM) - 10H", obs:"" },
+  { id:"2026-06-18", data:"2026-06-18", ministro:"BÁRBARA", backing:["MÁRCIA","SÁVIO","DAYANA"], violao:"PR. TIAGO", guitarra:"ACAUÃ", baixo:"BRENDO", bateria:"GABRIEL", teclado:"REBECA", datashow:"MESSIAS", som:"FELIPE", ensaio:"XXXXX", obs:"" },
+  { id:"2026-06-21", data:"2026-06-21", ministro:"KELEN / MAYARA", backing:["PR. TIAGO","MARIANA","BÁRBARA"], violao:"PR. TIAGO", guitarra:"ACAUÃ", baixo:"BRENDO", bateria:"LUIS VITOR", teclado:"LÉO MAICON", datashow:"DAYANA", som:"MARCELO", ensaio:"DIA 20 (SÁB) - 19H", obs:"" },
+  { id:"2026-06-25", data:"2026-06-25", ministro:"MAYARA", backing:["REBECA","MÁRCIA","KELEN"], violao:"PR. TIAGO", guitarra:"XXXXX", baixo:"BRENDO", bateria:"LUCAS", teclado:"ACAUÃ", datashow:"DAYANA", som:"MARCELO", ensaio:"XXXXX", obs:"" },
+  { id:"2026-06-28", data:"2026-06-28", ministro:"GRECIVALDO / LÉO MAICON", backing:["REBECA","ESTEFANY","LUCAS"], violao:"LÉO MAICON", guitarra:"ACAUÃ", baixo:"PR. TIAGO", bateria:"GABRIEL", teclado:"YAN", datashow:"BÁRBARA", som:"FELIPE", ensaio:"DIA 28 (DOM) - 10H", obs:"" }
+];
+
+const ADMIN_PASS = "imv2026";
+const STORAGE_KEY = "imv_escalas_v3";
+const DIAS_SEMANA = ["Domingo","Segunda-feira","Terça-feira","Quarta-feira","Quinta-feira","Sexta-feira","Sábado"];
+const DIAS_ABREV = ["DOM","SEG","TER","QUA","QUI","SEX","SÁB"];
+const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+
+let escalas = [];
+let isAdmin = false;
+let currentMonth = new Date(2026, 5, 1);
+let pendingDeleteId = null;
+let editMode = "edit"; // "edit" | "new"
+
+// ===== FIREBASE =====
+const firebaseConfig = {
+  apiKey: "AIzaSyCi3eLVLZDO-v2jA7UoaLo8BtDxRsKTKWs",
+  authDomain: "escala-manancial.firebaseapp.com",
+  projectId: "escala-manancial",
+  storageBucket: "escala-manancial.firebasestorage.app",
+  messagingSenderId: "943902961676",
+  appId: "1:943902961676:web:bff633b691ea78f9503e29",
+  measurementId: "G-9C0HL0Z5PR"
+};
+const fbApp = firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const ESCALAS_DOC = db.collection("escalas").doc("imv");
+let suppressNextSnapshot = false;
+
+// ===== STORAGE =====
+function loadEscalas() {
+  // Carrega cache local primeiro (resposta instantânea / offline)
+  try {
+    const s = localStorage.getItem(STORAGE_KEY);
+    escalas = s ? JSON.parse(s) : JSON.parse(JSON.stringify(ESCALAS_INICIAIS));
+  } catch(e) { escalas = JSON.parse(JSON.stringify(ESCALAS_INICIAIS)); }
+
+  // Sincroniza com Firestore em tempo real
+  ESCALAS_DOC.onSnapshot((doc) => {
+    if (suppressNextSnapshot) { suppressNextSnapshot = false; return; }
+    if (doc.exists && doc.data().lista) {
+      escalas = doc.data().lista;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(escalas));
+    } else {
+      // Documento não existe ainda: inicializa com dados padrão
+      ESCALAS_DOC.set({ lista: escalas });
+    }
+    renderAll();
+    updateMobileNav();
+  }, (err) => {
+    console.error("Erro ao sincronizar com Firestore:", err);
+    showToast("⚠️ Sem conexão com o servidor — usando dados locais");
+  });
+}
+function saveEscalas() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(escalas));
+  suppressNextSnapshot = true;
+  ESCALAS_DOC.set({ lista: escalas }).catch((err) => {
+    console.error("Erro ao salvar no Firestore:", err);
+    showToast("⚠️ Falha ao salvar na nuvem — alteração salva apenas localmente");
+  });
+}
+
+// ===== HELPERS =====
+function diaBadgeFromDate(dateStr) {
+  const d = new Date(dateStr + "T12:00:00");
+  const dia = d.getDate();
+  const abrev = DIAS_ABREV[d.getDay()];
+  return `${dia} (${abrev})`;
+}
+function diaSemanaFromDate(dateStr) {
+  const d = new Date(dateStr + "T12:00:00");
+  return DIAS_SEMANA[d.getDay()];
+}
+function mesAnoFromDate(dateStr) {
+  const d = new Date(dateStr + "T12:00:00");
+  return `${MESES[d.getMonth()]} de ${d.getFullYear()}`;
+}
+function slotVal(v) {
+  if (!v || v === "XXXXX") return `<span class="slot-name empty">—</span>`;
+  return `<span class="slot-name">${v}</span>`;
+}
+
+// ===== RENDER CARD =====
+function renderCard(e, featured=false) {
+  const badge = diaBadgeFromDate(e.data);
+  const diaSem = diaSemanaFromDate(e.data);
+  const mesAno = mesAnoFromDate(e.data);
+  const ensaioHtml = e.ensaio && e.ensaio !== "XXXXX"
+    ? `<div class="event-ensaio">🎵 Ensaio: ${e.ensaio}</div>` : "";
+  const backingStr = Array.isArray(e.backing) ? e.backing.join(", ") : e.backing;
+  const obsHtml = e.obs ? `<div style="grid-column:1/-1;font-size:.75rem;color:var(--text-muted);margin-top:4px;">📝 ${e.obs}</div>` : "";
+  const adminBtns = isAdmin ? `
+    <div class="card-actions">
+      <button class="edit-btn" onclick="openEdit('${e.id}')">✏️ Editar</button>
+      <button class="del-btn" onclick="confirmDelete('${e.id}')">🗑️</button>
+    </div>` : "";
+
+  return `<div class="escala-card ${featured?'featured':''}">
+    <div class="card-top">
+      <div>
+        <div class="event-date-badge">${badge}</div>
+        <div class="event-day-name">${diaSem} · ${mesAno}</div>
+        ${ensaioHtml}
+      </div>
+      ${adminBtns}
+    </div>
+    <div class="backing-slot">
+      <div class="slot-label">🎤 Ministro(s)</div>
+      <div class="slot-name">${e.ministro||'—'}</div>
+    </div>
+    <div class="backing-slot">
+      <div class="slot-label">🎙️ Backing Vocal</div>
+      <div class="backing-names">${backingStr||'—'}</div>
+    </div>
+    <div class="team-grid">
+      <div class="team-slot"><div class="slot-label">🪕 Violão</div>${slotVal(e.violao)}</div>
+      <div class="team-slot"><div class="slot-label">🎸 Guitarra</div>${slotVal(e.guitarra)}</div>
+      <div class="team-slot"><div class="slot-label">🎸 Baixo</div>${slotVal(e.baixo)}</div>
+      <div class="team-slot"><div class="slot-label">🥁 Bateria</div>${slotVal(e.bateria)}</div>
+      <div class="team-slot"><div class="slot-label">🎹 Teclado</div>${slotVal(e.teclado)}</div>
+      <div class="team-slot"><div class="slot-label">📽️ Data Show</div>${slotVal(e.datashow)}</div>
+      <div class="team-slot"><div class="slot-label">🎚️ Som</div>${slotVal(e.som)}</div>
+      ${obsHtml}
+    </div>
+  </div>`;
+}
+
+// ===== PRÓXIMA =====
+function renderProxima() {
+  if (isMobile()) { renderProximaMobile(); return; }
+  const today = new Date(); today.setHours(0,0,0,0);
+  const upcoming = escalas
+    .filter(e => new Date(e.data+"T12:00:00") >= today)
+    .sort((a,b) => a.data.localeCompare(b.data));
+
+  const container = document.getElementById("proxima-content");
+  const sub = document.getElementById("proxima-sub");
+
+  if (!upcoming.length) {
+    sub.textContent = "Nenhuma escala futura cadastrada";
+    container.innerHTML = `<div class="empty-state"><p>Aguardando novas escalas</p></div>`;
+    return;
+  }
+
+  const next = upcoming[0];
+  const nextDate = new Date(next.data+"T12:00:00");
+  const diff = Math.ceil((nextDate - today) / 86400000);
+  const diffLabel = diff===0?"Hoje!":diff===1?"Amanhã!":`em ${diff} dias`;
+  sub.textContent = `Próximo: ${diaBadgeFromDate(next.data)} de ${mesAnoFromDate(next.data)}`;
+
+  let html = `<div class="proxima-hero">
+    <div class="proxima-hero-top">
+      <div>
+        <div class="proxima-date-big">${diaBadgeFromDate(next.data)}</div>
+        <div class="proxima-dayname">${mesAnoFromDate(next.data)} · ${diaSemanaFromDate(next.data)}</div>
+      </div>
+      <div class="proxima-countdown">
+        <div class="days">${diff===0?'🙌':diff}</div>
+        <div class="days-label">${diffLabel}</div>
+      </div>
+    </div>
+    ${renderCard(next, true)}
+  </div>`;
+
+  if (upcoming.length > 1) {
+    html += `<div class="view-header" style="margin-top:16px"><h2 style="font-size:1rem;font-family:Cinzel,serif;color:var(--gold)">Próximas Escalas</h2></div>`;
+    upcoming.slice(1).forEach(e => { html += renderCard(e); });
+  }
+  container.innerHTML = html;
+}
+
+// ===== MÊS =====
+function renderMes() {
+  const y = currentMonth.getFullYear();
+  const m = currentMonth.getMonth();
+  document.getElementById("monthLabel").textContent = `${MESES[m]} ${y}`;
+  const filtered = escalas
+    .filter(e => { const d=new Date(e.data+"T12:00:00"); return d.getFullYear()===y && d.getMonth()===m; })
+    .sort((a,b) => a.data.localeCompare(b.data));
+  const container = document.getElementById("mes-list");
+  let html = filtered.map(e => renderCard(e)).join("");
+  if (isAdmin) {
+    html += `<button class="add-escala-btn" onclick="openNew()">+ Nova Escala em ${MESES[m]} ${y}</button>`;
+  }
+  container.innerHTML = html || `<div class="empty-state"><p>Nenhuma escala em ${MESES[m]} ${y}</p></div>${isAdmin?`<button class="add-escala-btn" onclick="openNew()">+ Criar primeira escala deste mês</button>`:''}`;
+}
+
+// ===== HISTÓRICO =====
+function renderHistorico() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const past = escalas
+    .filter(e => new Date(e.data+"T12:00:00") < today)
+    .sort((a,b) => b.data.localeCompare(a.data));
+  const container = document.getElementById("historico-list");
+  document.getElementById("hist-empty").style.display = past.length ? "none" : "block";
+  container.innerHTML = past.map(e => renderCard(e)).join("");
+}
+
+// ===== FORM HELPERS =====
+function fillForm(e) {
+  document.getElementById("edit-data").value = e.data;
+  document.getElementById("edit-ministro").value = e.ministro||"";
+  document.getElementById("edit-backing").value = Array.isArray(e.backing)?e.backing.join(", "):e.backing||"";
+  document.getElementById("edit-violao").value = e.violao||"";
+  document.getElementById("edit-guitarra").value = e.guitarra||"";
+  document.getElementById("edit-baixo").value = e.baixo||"";
+  document.getElementById("edit-bateria").value = e.bateria||"";
+  document.getElementById("edit-teclado").value = e.teclado||"";
+  document.getElementById("edit-datashow").value = e.datashow||"";
+  document.getElementById("edit-som").value = e.som||"";
+  document.getElementById("edit-ensaio").value = e.ensaio||"";
+  document.getElementById("edit-obs").value = e.obs||"";
+}
+function readForm() {
+  return {
+    data: document.getElementById("edit-data").value,
+    ministro: document.getElementById("edit-ministro").value.trim(),
+    backing: document.getElementById("edit-backing").value.split(",").map(s=>s.trim()).filter(Boolean),
+    violao: document.getElementById("edit-violao").value.trim()||"XXXXX",
+    guitarra: document.getElementById("edit-guitarra").value.trim()||"XXXXX",
+    baixo: document.getElementById("edit-baixo").value.trim()||"XXXXX",
+    bateria: document.getElementById("edit-bateria").value.trim()||"XXXXX",
+    teclado: document.getElementById("edit-teclado").value.trim()||"XXXXX",
+    datashow: document.getElementById("edit-datashow").value.trim()||"XXXXX",
+    som: document.getElementById("edit-som").value.trim()||"XXXXX",
+    ensaio: document.getElementById("edit-ensaio").value.trim()||"XXXXX",
+    obs: document.getElementById("edit-obs").value.trim()
+  };
+}
+
+// ===== OPEN EDIT =====
+function openEdit(id) {
+  const e = escalas.find(x=>x.id===id);
+  if (!e) return;
+  editMode = "edit";
+  document.getElementById("editTitle").textContent = "✏️ Editar Escala";
+  document.getElementById("editSub").textContent = `${diaBadgeFromDate(e.data)} — ${diaSemanaFromDate(e.data)} · ${mesAnoFromDate(e.data)}`;
+  document.getElementById("editId").value = id;
+  fillForm(e);
+  document.getElementById("modalEdit").classList.add("open");
+}
+
+// ===== OPEN NEW =====
+function openNew() {
+  editMode = "new";
+  document.getElementById("editTitle").textContent = "➕ Nova Escala";
+  document.getElementById("editId").value = "";
+  // Sugere data: primeiro culto do mês atual visualizado
+  const y = currentMonth.getFullYear();
+  const m = currentMonth.getMonth();
+  // Encontra próxima quinta ou domingo do mês
+  let d = new Date(y, m, 1);
+  while (d.getDay()!==0 && d.getDay()!==4) d.setDate(d.getDate()+1);
+  const iso = `${y}-${String(m+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  document.getElementById("editSub").textContent = `Preencha os dados da nova escala`;
+  fillForm({ data:iso, ministro:"", backing:[], violao:"", guitarra:"", baixo:"", bateria:"", teclado:"", datashow:"", som:"", ensaio:"", obs:"" });
+  document.getElementById("modalEdit").classList.add("open");
+}
+
+// ===== SAVE =====
+function saveEdit() {
+  const data = readForm();
+  if (!data.data) { showToast("⚠️ Informe a data!"); return; }
+  if (!data.ministro) { showToast("⚠️ Informe o ministro!"); return; }
+
+  if (editMode === "new") {
+    // Checa duplicata
+    if (escalas.find(x=>x.id===data.data)) {
+      showToast("⚠️ Já existe uma escala nesta data!"); return;
+    }
+    escalas.push({ id: data.data, ...data });
+    showToast("✅ Nova escala criada!");
+    // Navega para o mês da nova escala
+    const nd = new Date(data.data+"T12:00:00");
+    currentMonth = new Date(nd.getFullYear(), nd.getMonth(), 1);
+  } else {
+    const id = document.getElementById("editId").value;
+    const idx = escalas.findIndex(x=>x.id===id);
+    if (idx===-1) return;
+    // Se data mudou, atualiza id
+    const newId = data.data;
+    escalas[idx] = { id: newId, ...data };
+    showToast("✅ Escala atualizada!");
+  }
+  saveEscalas();
+  document.getElementById("modalEdit").classList.remove("open");
+  renderAll();
+}
+
+// ===== DELETE =====
+function confirmDelete(id) {
+  pendingDeleteId = id;
+  const e = escalas.find(x=>x.id===id);
+  document.getElementById("confirmMsg").textContent =
+    `Excluir a escala do dia ${e ? diaBadgeFromDate(e.data)+' — '+mesAnoFromDate(e.data) : id}? Esta ação não pode ser desfeita.`;
+  document.getElementById("modalConfirm").classList.add("open");
+}
+function doDelete() {
+  escalas = escalas.filter(x=>x.id!==pendingDeleteId);
+  saveEscalas();
+  document.getElementById("modalConfirm").classList.remove("open");
+  renderAll();
+  showToast("🗑️ Escala removida");
+}
+
+// ===== ADMIN =====
+function openAdminModal() {
+  document.getElementById("adminPass").value="";
+  document.getElementById("adminError").style.display="none";
+  document.getElementById("modalAdmin").classList.add("open");
+  setTimeout(()=>document.getElementById("adminPass").focus(),300);
+}
+function doLogin() {
+  if (document.getElementById("adminPass").value===ADMIN_PASS) {
+    isAdmin=true;
+    document.getElementById("modalAdmin").classList.remove("open");
+    document.getElementById("adminBtn").classList.add("active");
+    document.getElementById("adminBtn").textContent="🔓 Admin";
+    renderAll();
+    showToast("🔓 Modo edição ativado");
+  } else {
+    document.getElementById("adminError").style.display="block";
+  }
+}
+
+// ===== TOAST =====
+function showToast(msg) {
+  const t=document.getElementById("toast");
+  t.textContent=msg; t.classList.add("show");
+  setTimeout(()=>t.classList.remove("show"),2800);
+}
+
+// ===== RENDER ALL =====
+function renderAll() {
+  renderProxima();
+  renderMes();
+  renderHistorico();
+}
+
+// ===== NOTAS MUSICAIS FLUTUANTES =====
+function initNotes() {
+  const canvas = document.getElementById("notes-canvas");
+  const symbols = ["♩","♪","♫","♬","𝄞","𝄢"];
+  const total = 10;
+  for (let i = 0; i < total; i++) {
+    const el = document.createElement("span");
+    el.className = "note";
+    el.textContent = symbols[Math.floor(Math.random()*symbols.length)];
+    const left = Math.random()*96;
+    const dur = 9 + Math.random()*14;
+    const delay = -(Math.random()*dur);
+    const size = 0.8 + Math.random()*0.7;
+    el.style.cssText = `left:${left}%;bottom:-2rem;font-size:${size}rem;color:var(--gold);animation-duration:${dur}s;animation-delay:${delay}s;`;
+    canvas.appendChild(el);
+  }
+}
+
+// ===== NAVEGAÇÃO MOBILE =====
+let mobileIdx = 0; // índice na lista de escalas futuras (ordenadas)
+
+function getMobileList() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  return escalas
+    .filter(e => new Date(e.data+"T12:00:00") >= today)
+    .sort((a,b) => a.data.localeCompare(b.data));
+}
+
+function isMobile() { return window.innerWidth <= 900; }
+
+function updateMobileNav() {
+  const bar = document.getElementById("mobileNavBar");
+  // Só mostra na aba Próxima
+  const proximaActive = document.getElementById("view-proxima").classList.contains("active");
+  if (!isMobile() || !proximaActive) { bar.style.display="none"; return; }
+
+  const list = getMobileList();
+  if (list.length <= 1) { bar.style.display="none"; return; }
+
+  bar.style.display = "flex";
+  // Garante índice válido
+  if (mobileIdx >= list.length) mobileIdx = list.length - 1;
+  if (mobileIdx < 0) mobileIdx = 0;
+
+  document.getElementById("mnavPrev").disabled = mobileIdx === 0;
+  document.getElementById("mnavNext").disabled = mobileIdx === list.length - 1;
+  document.getElementById("mnavCounter").textContent = `${mobileIdx+1} / ${list.length}`;
+}
+
+function renderProximaMobile() {
+  const list = getMobileList();
+  if (!list.length) { renderProxima(); return; }
+
+  const e = list[mobileIdx];
+  const today = new Date(); today.setHours(0,0,0,0);
+  const nextDate = new Date(e.data+"T12:00:00");
+  const diff = Math.ceil((nextDate - today) / 86400000);
+  const diffLabel = diff===0?"Hoje!":diff===1?"Amanhã!":`em ${diff} dias`;
+
+  document.getElementById("proxima-sub").textContent = `Escala ${mobileIdx+1} de ${list.length} · ${diaBadgeFromDate(e.data)} de ${mesAnoFromDate(e.data)}`;
+
+  document.getElementById("proxima-content").innerHTML = `
+    <div class="proxima-hero">
+      <div class="proxima-hero-top">
+        <div>
+          <div class="proxima-date-big">${diaBadgeFromDate(e.data)}</div>
+          <div class="proxima-dayname">${mesAnoFromDate(e.data)} · ${diaSemanaFromDate(e.data)}</div>
+        </div>
+        <div class="proxima-countdown">
+          <div class="days">${diff===0?'🙌':diff}</div>
+          <div class="days-label">${diffLabel}</div>
+        </div>
+      </div>
+      ${renderCard(e, mobileIdx===0)}
+    </div>`;
+
+  updateMobileNav();
+}
+
+// ===== GLOBAL =====
+window.openEdit=openEdit;
+window.openNew=openNew;
+window.confirmDelete=confirmDelete;
+
+// ===== INIT =====
+document.addEventListener("DOMContentLoaded", () => {
+  loadEscalas();
+
+  setTimeout(() => {
+    document.getElementById("splash").classList.add("fade");
+    document.getElementById("app").classList.add("show");
+    renderAll();
+  }, 1600);
+
+  // Tabs
+  document.querySelectorAll(".tab").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+      document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+      document.getElementById(`view-${btn.dataset.view}`).classList.add("active");
+      btn.classList.add("active");
+      if(btn.dataset.view==="mes") renderMes();
+      if(btn.dataset.view==="historico") renderHistorico();
+    });
+  });
+
+  // Month nav
+  document.getElementById("prevMonth").addEventListener("click",()=>{currentMonth.setMonth(currentMonth.getMonth()-1);renderMes();});
+  document.getElementById("nextMonth").addEventListener("click",()=>{currentMonth.setMonth(currentMonth.getMonth()+1);renderMes();});
+
+  // Admin btn
+  document.getElementById("adminBtn").addEventListener("click",()=>{
+    if(isAdmin){
+      isAdmin=false;
+      document.getElementById("adminBtn").classList.remove("active");
+      document.getElementById("adminBtn").textContent="🔐 Admin";
+      renderAll();showToast("🔒 Modo edição desativado");
+    } else { openAdminModal(); }
+  });
+  document.getElementById("adminLoginBtn").addEventListener("click",doLogin);
+  document.getElementById("adminPass").addEventListener("keydown",e=>{if(e.key==="Enter")doLogin();});
+  document.getElementById("adminClose").addEventListener("click",()=>document.getElementById("modalAdmin").classList.remove("open"));
+  document.getElementById("adminCancelBtn").addEventListener("click",()=>document.getElementById("modalAdmin").classList.remove("open"));
+
+  // Edit modal
+  document.getElementById("editSaveBtn").addEventListener("click",saveEdit);
+  document.getElementById("editClose").addEventListener("click",()=>document.getElementById("modalEdit").classList.remove("open"));
+  document.getElementById("editCancelBtn").addEventListener("click",()=>document.getElementById("modalEdit").classList.remove("open"));
+
+  // Confirm delete
+  document.getElementById("confirmYes").addEventListener("click",doDelete);
+  document.getElementById("confirmNo").addEventListener("click",()=>document.getElementById("modalConfirm").classList.remove("open"));
+
+  // Notas musicais
+  initNotes();
+
+  // Mobile nav buttons
+  document.getElementById("mnavPrev").addEventListener("click",()=>{
+    if(mobileIdx>0){ mobileIdx--; renderProximaMobile(); }
+  });
+  document.getElementById("mnavNext").addEventListener("click",()=>{
+    const list=getMobileList();
+    if(mobileIdx<list.length-1){ mobileIdx++; renderProximaMobile(); }
+  });
+
+  // Ao mudar de aba, mostra/esconde barra mobile
+  document.querySelectorAll(".tab").forEach(btn=>{
+    btn.addEventListener("click",()=>{ setTimeout(updateMobileNav,50); });
+  });
+
+  // Responsividade ao redimensionar
+  window.addEventListener("resize", updateMobileNav);
+});
+</script>
 </body>
 </html>
